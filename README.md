@@ -15,11 +15,16 @@ There is **no OpenGL → Metal translation layer** in the path. The only transla
 
 > ### Status: experimental
 > This is a fork of [Im-Fran/MetalCraft](https://github.com/Im-Fran/MetalCraft) v0.1.0 (GPL-3.0), retargeted and
-> hardened for Minecraft **1.21.11**. The renderer core is upstream's work, which was tested by its author on an M5
-> Mac running macOS 27. The changes in this fork are packaging/platform-safety work: early capability detection,
-> a real OpenGL fallback for unsupported machines, no Fabric API requirement, and CI that builds the jar on an Apple
-> Silicon runner. **This fork itself has not been built or run by the person who prepared it** (it was assembled on
-> Linux, without a Mac, Xcode or a Metal GPU). Treat it as a starting point you build and test yourself.
+> hardened for Minecraft **1.21.11**. The renderer core is upstream's work, tested by its author on an M5 Mac running
+> macOS 27. The changes in this fork are packaging/platform-safety work: early capability detection, a real OpenGL
+> fallback for unsupported machines, no Fabric API requirement, and a build that is verified on Apple Silicon.
+>
+> **Verified in CI** (GitHub Actions, `macos-14` Apple Silicon runner, Xcode + Java 25):
+> the Java layer compiles against Minecraft 1.21.11 and Sodium 0.8.14, `libmetalcraft.dylib` compiles with clang, and
+> the test suite translates **every vanilla core/post shader** plus Sodium's chunk shader through GLSL → SPIR-V → MSL
+> and has the Metal runtime compiler accept all of them (3 tests, 0 failures).
+> **Not yet play-tested in a world by the maintainer of this fork** — no Mac was available while preparing it. Back up
+> your worlds and treat the first session as a test.
 
 ## Requirements
 
@@ -33,9 +38,15 @@ There is **no OpenGL → Metal translation layer** in the path. The only transla
 | Sodium | optional, `mc1.21.11-0.8.14` — its terrain renderer is ported to Metal too |
 | Iris / shader packs | not supported |
 
+## Download
+
+Grab `metalcraft-<version>.jar` from the [latest release](https://github.com/Ethan-mtl/bomboclatmod/releases/latest).
+Every release is built by CI on an Apple Silicon runner; builds from the branch are also attached to the corresponding
+Actions run (Actions → **build** → *metalcraft-jar*).
+
 ## Install
 
-1. Build the jar (below) or download it from the Actions tab of this repository.
+1. Download the jar (or build it yourself, below).
 2. Drop `metalcraft-<version>.jar` into `.minecraft/mods` next to Fabric Loader.
 3. Start the game. The F3 debug screen lists the renderer as `Metal on Apple M…` when the backend is active; the log
    also prints `Metal renderer selected (GPU: …)`.

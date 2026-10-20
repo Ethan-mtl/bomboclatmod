@@ -43,6 +43,11 @@ jobs:
             echo "::notice title=jar content::$line"
           done
           python3 - <<'PY'
+          import json, subprocess, zipfile
+          meta = zipfile.ZipFile(glob.glob("build/libs/*.jar")[0]).read("fabric.mod.json").decode()
+          print("::notice title=fabric.mod.json::" + meta.replace("\n", " ")[:1400])
+          PY
+          python3 - <<'PY'
           import glob, xml.etree.ElementTree as ET
           tests = failures = errors = skipped = 0
           for path in glob.glob("build/test-results/test/*.xml"):
