@@ -10,22 +10,54 @@ jobs:
   build:
     # macos-14 and newer runners are Apple Silicon, which is what the native layer targets.
     runs-on: macos-14
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Build (compiles Java, builds libmetalcraft.dylib, runs shader tests)
-        run: ./gradlew build --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew build --no-daemon --stacktrace --console=plain 2>&1 | tee gradle.log
+
+      # The build log lives on storage this repo's tooling cannot always reach, so on failure the tail is also
+      # surfaced as check annotations, which are readable through the API.
+      - name: Report build failure
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          lines = pathlib.Path("gradle.log").read_text(errors="replace").splitlines() \
+              if pathlib.Path("gradle.log").exists() else ["gradle.log missing: Gradle never started"]
+          tail = [l for l in lines if l.strip()][-30:]
+          chunk = 900
+          text = "\n".join(tail)
+          for i in range(0, min(len(text), 8 * chunk), chunk):
+              msg = text[i:i + chunk].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+              print(f"::error title=gradle output::{msg}")
+          PY
 
       - name: Upload mod jar
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: metalcraft-jar
           path: build/libs/*.jar
           if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-log
+          path: gradle.log
+          if-no-files-found: ignore
