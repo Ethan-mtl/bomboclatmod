@@ -7,7 +7,9 @@ group = property("maven_group")!!
 base.archivesName = property("archives_base_name") as String
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    // Gradle and Loom must run on a Java 25 JVM, but the mod itself targets Java 21 like Minecraft 1.21.11 does.
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 repositories {
@@ -41,6 +43,10 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+tasks.compileTestJava {
+    options.release = 21
+}
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -56,7 +62,7 @@ tasks.compileJava {
 // The native layer is a single Objective-C++ file; compiled with clang directly so no CMake/Xcode project is needed.
 val buildNative = tasks.register<Exec>("buildNative") {
     val sources = fileTree("src/main/native")
-    val javaHome = javaToolchains.compilerFor(java.toolchain).map { it.metadata.installationPath.asFile.absolutePath }
+    val javaHome = System.getProperty("java.home")
     dependsOn(tasks.compileJava)
     inputs.files(sources, jniHeaders)
     outputs.file(nativeLib)
@@ -66,7 +72,7 @@ val buildNative = tasks.register<Exec>("buildNative") {
             "xcrun", "clang++", "-std=c++20", "-fobjc-arc", "-O2",
             "-arch", "arm64", "-mmacosx-version-min=14.0", "-shared",
             "-framework", "Metal", "-framework", "QuartzCore", "-framework", "Cocoa",
-            "-I${javaHome.get()}/include", "-I${javaHome.get()}/include/darwin",
+            "-I${javaHome}/include", "-I${javaHome}/include/darwin",
             "-I${jniHeaders.get().asFile}",
             "-o", nativeLib.get().asFile.absolutePath,
             *sources.files.filter { it.extension == "mm" }.map { it.absolutePath }.toTypedArray(),

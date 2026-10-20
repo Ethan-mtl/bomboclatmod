@@ -46,7 +46,8 @@ Minecraft start on its normal OpenGL renderer instead of crashing.
 ## Build
 
 Building needs macOS with Xcode command line tools (`xcrun clang++`) because the Metal layer is native Objective-C++,
-plus a JDK 21:
+plus a **JDK 25** to run Gradle/Loom (the mod itself still compiles to Java 21 bytecode, which is what Minecraft
+1.21.11 runs on):
 
 ```sh
 ./gradlew build          # jar in build/libs, also runs the shader-translation tests
