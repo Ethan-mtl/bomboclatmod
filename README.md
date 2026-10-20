@@ -2,6 +2,16 @@
 
 [![build](https://github.com/Ethan-mtl/bomboclatmod/actions/workflows/build.yml/badge.svg)](https://github.com/Ethan-mtl/bomboclatmod/actions/workflows/build.yml)
 
+> ## ⬇️ Download the mod
+> **Jar:** [`metalcraft-0.1.1+1.21.11.jar`](https://github.com/Ethan-mtl/bomboclatmod/releases/latest) — open
+> **[Releases → Latest](https://github.com/Ethan-mtl/bomboclatmod/releases/latest)** and click the `.jar` under *Assets*,
+> or use the direct link:
+> `https://github.com/Ethan-mtl/bomboclatmod/releases/download/v0.1.1-mc1.21.11/metalcraft-0.1.1%2B1.21.11.jar`
+>
+> The jar is **not in the source tree** — it is compiled by CI on an Apple Silicon runner and attached to the release
+> (GitHub Actions → the `build` run → *Artifacts* also has it). Put the jar in `.minecraft/mods` next to Fabric Loader
+> 0.19.5+, launch 1.21.11, and check F3 shows `Metal on Apple M…`.
+
 Minecraft's Java Edition renders through **OpenGL**. On macOS, Apple deprecated OpenGL years ago, so every draw call
 Minecraft makes is translated to Metal by Apple's OpenGL driver — that translation is the main reason the game runs so
 much slower on a Mac than the hardware should allow.
