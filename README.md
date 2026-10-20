@@ -1,5 +1,7 @@
 # MetalCraft — native Metal renderer for Minecraft 1.21.11 (Fabric)
 
+[![build](https://github.com/Ethan-mtl/bomboclatmod/actions/workflows/build.yml/badge.svg)](https://github.com/Ethan-mtl/bomboclatmod/actions/workflows/build.yml)
+
 Minecraft's Java Edition renders through **OpenGL**. On macOS, Apple deprecated OpenGL years ago, so every draw call
 Minecraft makes is translated to Metal by Apple's OpenGL driver — that translation is the main reason the game runs so
 much slower on a Mac than the hardware should allow.
