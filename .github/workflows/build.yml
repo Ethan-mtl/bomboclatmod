@@ -108,6 +108,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
-            --title "MetalCraft ${GITHUB_REF_NAME}" \
-            --notes "Native Metal renderer for Minecraft 1.21.11 (Fabric). Built from ${GITHUB_SHA} on Apple Silicon; the shader-translation test suite passed. Requires an Apple Silicon Mac, macOS 14+, Minecraft 1.21.11 and Fabric Loader 0.19.5+. Optional: Sodium mc1.21.11-0.8.14."
+          NOTES="Native Metal renderer for Minecraft 1.21.11 (Fabric). Built from ${GITHUB_SHA} on Apple Silicon; the shader-translation test suite passed. Requires an Apple Silicon Mac, macOS 14+, Minecraft 1.21.11 and Fabric Loader 0.19.5+. Optional: Sodium mc1.21.11-0.8.14."
+          # Re-running a tag (or moving it) must update the existing release instead of failing.
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" build/libs/*.jar --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
+              --title "MetalCraft ${GITHUB_REF_NAME}" --notes "$NOTES"
+          fi
