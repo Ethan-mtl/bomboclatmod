@@ -27,6 +27,15 @@ static id<MTLSharedEvent> gEvent;
 static uint64_t gEventValue;
 static id<MTLCommandBuffer> gCmd;
 static std::atomic<double> gGpuSeconds{0};  // GPU execution time of completed command buffers, for profiling.
+
+// Apple's libc++ doesn't implement C++20's atomic<double>::fetch_add, so accumulate with a CAS loop.
+static void addGpuSeconds(double seconds) {
+    double current = gGpuSeconds.load(std::memory_order_relaxed);
+    while (!gGpuSeconds.compare_exchange_weak(current, current + seconds,
+                                              std::memory_order_relaxed, std::memory_order_relaxed)) {
+    }
+}
+
 // GPU time of recently completed command buffers by fence value, for Blaze3D timer queries (F3's GPU utilization).
 static const uint64_t kHistorySize = 1024;
 static struct { uint64_t fence; double seconds; } gHistory[kHistorySize];
@@ -138,7 +147,7 @@ static void commit() {
     gSamples = nil;
     gSampleLabels = nil;
     [gCmd addCompletedHandler:^(id<MTLCommandBuffer> cb) {
-        gGpuSeconds.fetch_add(cb.GPUEndTime - cb.GPUStartTime);
+        addGpuSeconds(cb.GPUEndTime - cb.GPUStartTime);
         {
             std::lock_guard<std::mutex> lock(gHistoryLock);
             gHistory[fenceValue % kHistorySize] = {fenceValue, cb.GPUEndTime - cb.GPUStartTime};
