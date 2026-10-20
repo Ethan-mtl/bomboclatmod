@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "metalcraft",
+  "version": "${version}",
+  "name": "MetalCraft",
+  "description": "Native Metal renderer for Minecraft on Apple Silicon Macs. Replaces the OpenGL renderer with a direct Metal backend - no OpenGL-to-Metal translation layer.",
+  "authors": [
+    "Im-Fran (MetalCraft)"
+  ],
+  "contributors": [
+    "bomboclatmod fork"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Ethan-mtl/bomboclatmod",
+    "sources": "https://github.com/Im-Fran/MetalCraft"
+  },
+  "license": "GPL-3.0-only",
+  "icon": "assets/metalcraft/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "preLaunch": [
+      "cl.franciscosolis.metalcraft.MetalCraftPreLaunch"
+    ],
+    "client": [
+      "cl.franciscosolis.metalcraft.MetalCraft"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "1.21.11",
+    "java": ">=21"
+  },
+  "suggests": {
+    "sodium": "*"
+  },
+  "breaks": {
+    "sodium": [
+      "<0.8.14",
+      ">=0.9.0"
+    ]
+  },
+  "mixins": [
+    "metalcraft.mixins.json",
+    "metalcraft.sodium.mixins.json"
+  ]
+}

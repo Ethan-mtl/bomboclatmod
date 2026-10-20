@@ -1,0 +1,118 @@
+name: build
+
+on:
+  push:
+    branches: [main, "arena/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # macos-14 and newer runners are Apple Silicon, which is what the native layer targets.
+    runs-on: macos-14
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Loom 1.18.2 needs a Java 25 JVM to run; the mod compiles to Java 21 bytecode.
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Build (compiles Java, builds libmetalcraft.dylib, runs shader tests)
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew build --no-daemon --stacktrace --console=plain 2>&1 | tee gradle.log
+
+      - name: Verify jar contents
+        if: success()
+        continue-on-error: true
+        shell: bash
+        run: |
+          JAR=$(ls build/libs/*.jar | head -1)
+          echo "::notice title=jar::$JAR ($(stat -f%z "$JAR") bytes)"
+          unzip -l "$JAR" | grep -E "natives/|fabric.mod.json|mixins.json|icon.png" | while IFS= read -r line; do
+            echo "::notice title=jar content::$line"
+          done
+          python3 - <<'PY'
+          import glob, json, zipfile
+          meta = zipfile.ZipFile(glob.glob("build/libs/*.jar")[0]).read("fabric.mod.json").decode()
+          print("::notice title=fabric.mod.json::" + meta.replace("\n", " ")[:1400])
+          PY
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          tests = failures = errors = skipped = 0
+          for path in glob.glob("build/test-results/test/*.xml"):
+              root = ET.parse(path).getroot()
+              tests += int(root.get("tests", 0)); failures += int(root.get("failures", 0))
+              errors += int(root.get("errors", 0)); skipped += int(root.get("skipped", 0))
+          print(f"::notice title=tests::{tests} tests, {failures} failures, {errors} errors, {skipped} skipped")
+          PY
+
+      # The build log lives on storage that is not always reachable, so on failure the relevant parts are also
+      # surfaced as check annotations, which are readable through the API.
+      - name: Report build failure
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          log = pathlib.Path("gradle.log").read_text(errors="replace") if pathlib.Path("gradle.log").exists() else ""
+          lines = log.splitlines()
+          out = []
+          for i, line in enumerate(lines):
+              if line.startswith("FAILURE:") or line.startswith("* What went wrong"):
+                  out = lines[i:i + 12]
+                  break
+          # Compiler diagnostics (clang/javac) are what actually explain a failed native or Java build.
+          diags = [l for l in lines if "error:" in l or l.startswith("ld:") or "fatal error" in l][:18]
+          if not out:
+              out = [l for l in lines if l.strip()][:30]
+          head = [l for l in lines if l.strip()][:3]
+          text = "\n".join(head + ["..."] + diags + ["..."] + out)
+          chunk = 900
+          for i in range(0, min(len(text), 8 * chunk), chunk):
+              msg = text[i:i + chunk].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+              print(f"::error title=gradle output::{msg}")
+          PY
+
+      - name: Upload mod jar
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metalcraft-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-log
+          path: gradle.log
+          if-no-files-found: ignore
+
+      # Pushing a tag like v0.1.1-mc1.21.11 publishes a release with a downloadable jar.
+      - name: Publish release
+        if: success() && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Native Metal renderer for Minecraft 1.21.11 (Fabric). Built from ${GITHUB_SHA} on Apple Silicon; the shader-translation test suite passed. Requires an Apple Silicon Mac, macOS 14+, Minecraft 1.21.11 and Fabric Loader 0.19.5+. Optional: Sodium mc1.21.11-0.8.14."
+          # Re-running a tag (or moving it) must update the existing release instead of failing.
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" build/libs/*.jar --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
+              --title "MetalCraft ${GITHUB_REF_NAME}" --notes "$NOTES"
+          fi

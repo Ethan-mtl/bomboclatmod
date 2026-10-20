@@ -1,0 +1,33 @@
+MetalCraft — native Metal renderer for Minecraft: Java Edition
+==============================================================
+
+This repository is a fork of MetalCraft v0.1.0 by Im-Fran:
+
+    https://github.com/Im-Fran/MetalCraft
+
+Upstream is licensed under the GNU General Public License, version 3
+(GPL-3.0). This fork keeps that licence; see LICENSE.
+
+The rendering backend in src/main/java and src/main/native is upstream's
+work. Changes made in this fork:
+
+  * capability detection before launch (MetalSupport, MetalCraftPreLaunch)
+    so unsupported machines keep the OpenGL renderer instead of crashing;
+  * native library loading turned into a recoverable failure;
+  * Fabric API dependency removed (it was only used by a development
+    screenshot helper);
+  * Sodium version pinned to the 1.21.11 build, Fabric Loader 0.19.5;
+  * macOS/Apple Silicon version checks, clearer error messages;
+  * build/CI packaging for Minecraft 1.21.11 and documentation.
+
+No code from MetalMine is used; MetalMine is closed-source and is not
+distributed with, or required by, this project.
+
+Third-party components bundled in the built jar:
+
+  * LWJGL shaderc and spvc modules (BSD-3-Clause), used for
+    GLSL -> SPIR-V -> MSL translation;
+  * Fabric Loader (Apache-2.0) as a build/runtime dependency.
+
+Minecraft is a trademark of Mojang Synergies AB. This project is not
+affiliated with or endorsed by Mojang or Microsoft.
