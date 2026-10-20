@@ -42,12 +42,14 @@ jobs:
           out = []
           for i, line in enumerate(lines):
               if line.startswith("FAILURE:") or line.startswith("* What went wrong"):
-                  out = lines[i:i + 22]
+                  out = lines[i:i + 12]
                   break
+          # Compiler diagnostics (clang/javac) are what actually explain a failed native or Java build.
+          diags = [l for l in lines if "error:" in l or l.startswith("ld:") or "fatal error" in l][:18]
           if not out:
-              out = [l for l in lines if l.strip()][:40]
-          head = [l for l in lines if l.strip()][:5]
-          text = "\n".join(head + ["..."] + out)
+              out = [l for l in lines if l.strip()][:30]
+          head = [l for l in lines if l.strip()][:3]
+          text = "\n".join(head + ["..."] + diags + ["..."] + out)
           chunk = 900
           for i in range(0, min(len(text), 8 * chunk), chunk):
               msg = text[i:i + chunk].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
