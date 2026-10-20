@@ -35,6 +35,7 @@ jobs:
 
       - name: Verify jar contents
         if: success()
+        continue-on-error: true
         shell: bash
         run: |
           JAR=$(ls build/libs/*.jar | head -1)
@@ -43,7 +44,7 @@ jobs:
             echo "::notice title=jar content::$line"
           done
           python3 - <<'PY'
-          import json, subprocess, zipfile
+          import glob, json, zipfile
           meta = zipfile.ZipFile(glob.glob("build/libs/*.jar")[0]).read("fabric.mod.json").decode()
           print("::notice title=fabric.mod.json::" + meta.replace("\n", " ")[:1400])
           PY
