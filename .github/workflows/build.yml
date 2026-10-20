@@ -3,8 +3,12 @@ name: build
 on:
   push:
     branches: [main, "arena/**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -29,7 +33,26 @@ jobs:
           set -o pipefail
           ./gradlew build --no-daemon --stacktrace --console=plain 2>&1 | tee gradle.log
 
-      # The build log lives on storage this repo's tooling cannot always reach, so on failure the tail is also
+      - name: Verify jar contents
+        if: success()
+        shell: bash
+        run: |
+          JAR=$(ls build/libs/*.jar | head -1)
+          echo "::notice title=jar::$JAR ($(stat -f%z "$JAR") bytes)"
+          unzip -l "$JAR" | grep -E "natives/|fabric.mod.json|mixins.json|icon.png" | while IFS= read -r line; do
+            echo "::notice title=jar content::$line"
+          done
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          tests = failures = errors = skipped = 0
+          for path in glob.glob("build/test-results/test/*.xml"):
+              root = ET.parse(path).getroot()
+              tests += int(root.get("tests", 0)); failures += int(root.get("failures", 0))
+              errors += int(root.get("errors", 0)); skipped += int(root.get("skipped", 0))
+          print(f"::notice title=tests::{tests} tests, {failures} failures, {errors} errors, {skipped} skipped")
+          PY
+
+      # The build log lives on storage that is not always reachable, so on failure the relevant parts are also
       # surfaced as check annotations, which are readable through the API.
       - name: Report build failure
         if: failure()
@@ -71,3 +94,14 @@ jobs:
           name: gradle-log
           path: gradle.log
           if-no-files-found: ignore
+
+      # Pushing a tag like v0.1.1-mc1.21.11 publishes a release with a downloadable jar.
+      - name: Publish release
+        if: success() && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
+            --title "MetalCraft ${GITHUB_REF_NAME}" \
+            --notes "Native Metal renderer for Minecraft 1.21.11 (Fabric). Built from ${GITHUB_SHA} on Apple Silicon; the shader-translation test suite passed. Requires an Apple Silicon Mac, macOS 14+, Minecraft 1.21.11 and Fabric Loader 0.19.5+. Optional: Sodium mc1.21.11-0.8.14."
