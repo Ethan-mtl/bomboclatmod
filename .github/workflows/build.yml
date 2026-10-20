@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [main, "arena/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # macos-14 and newer runners are Apple Silicon, which is what the native layer targets.
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build (compiles Java, builds libmetalcraft.dylib, runs shader tests)
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: metalcraft-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
